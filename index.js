@@ -5,13 +5,13 @@ const csvtojson = require('csvtojson')
 const fs = require('fs')
 const { join, parse } = require('path')
  
-const csvfilepath = "rawdata.csv"
+const csvfilepath = "rawdata-test2.csv"
 
 csvtojson()
 .fromFile(csvfilepath)
 .then((json) => {
     // console.log(json)
-    fs.writeFileSync("rawdataJSON.json",JSON.stringify(json, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
+    fs.writeFileSync("rawdataJSON-test2-string.json",JSON.stringify(json, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
         if(err) console.log(err)
     })
 })
@@ -21,23 +21,23 @@ csvtojson()
 // let data = JSON.parse(rawdata);
 // console.log(data[0]);
 
-let dataJSON = fs.readFileSync('rawdataJSON.json'); //can also just read output.json here    //another way const data = JSON.parse(fs.readFileSync("output.json"));
+let dataJSON = fs.readFileSync('rawdataJSON-test2-string.json'); //can also just read output.json here    //another way const data = JSON.parse(fs.readFileSync("output.json"));
 
 let data = JSON.parse(dataJSON);
 // console.log(pathdata)
 
 
-fs.writeFileSync("rawdataJSON.json",JSON.stringify(data, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
+fs.writeFileSync("rawdataJSON-test2-parsed.json",JSON.stringify(data, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
     if(err) console.log(err)})
 
 //defining key emission factors 
 
 const MaxEngTorque = 2905.93  
 let CO2EmissionsFactor = [
-    [1,2,3,4],
-    [11,12,13,14],
-    [21,22,23,24],
-    [31,32,33,34]
+    [0.1,0.1,0.1,0.1],
+    [0.2,0.2,0.2,0.2],
+    [0.3,0.3,0.3,0.3],
+    [0.4,0.4,0.4,0.4]
 ] //values in table order and in g/kwH
 
 // CO2EmissionsFactor.forEach(collection => { //this converts factors in kwSecond - NOT WORKING THO
@@ -49,50 +49,51 @@ let CO2EmissionsFactor = [
 console.log('emission factors', CO2EmissionsFactor[1])
 
 
-//THIS IS OPTION for testing different periods of time and replacing it in the object
-const date = new Date('11/17/2022 00:00:00');
-const timestamps = []
-const dateStrings = []
-for (let second = 0; second < 3600; second++) {
-    dateStrings.push(date.toLocaleString());
+// //THIS IS OPTION for testing different periods of time and replacing it in the object
+// const date = new Date('11/17/2022 00:00:00');
+// const timestamps = []
+// const dateStrings = []
+// for (let second = 0; second < 3600; second++) {
+//     dateStrings.push(date.toLocaleString());
 
-    const time = date.getTime();
-    timestamps.push(time);
-    date.setSeconds(date.getSeconds() + 1);
-}
-// console.log('dateStrings',dateStrings);
-console.log('timestamps',timestamps);
+//     const time = date.getTime();
+//     timestamps.push(time);
+//     date.setSeconds(date.getSeconds() + 1);
+// }
+// // console.log('dateStrings',dateStrings);
+// console.log('timestamps',timestamps);
 
+// data.forEach((object, index) => {
+//     console.log(index);
+//     //converts from string to number
+//     for (const property in object) {
+//         const value = object[property];
+
+//         if (property === 'timestamp') {
+//             object[property] = dateStrings[index];
+//         } else if (typeof value === 'string') {
+//             object[property] = parseFloat(value);
+//         }
+
+//     }
+
+    //THIS IS OPTIONFOR READING MILLISECONDSTIME FROM CSV directly
 data.forEach((object, index) => {
     console.log(index);
     //converts from string to number
     for (const property in object) {
-        const value = object[property];
+        let value = object[property];
 
-        if (property === 'timestamp') {
-            object[property] = dateStrings[index];
-        } else if (typeof value === 'string') {
+        if (typeof value === 'string') {
             object[property] = parseFloat(value);
         }
-
+        if (property === 'timestamp') {
+            value = value*1000
+            let date = new Date(value)
+            let dateFormated = date.toLocaleString() //for putting in this format '17/11/2022, 01:00:00'
+            object[property] = dateFormated;
     }
-
-    //THIS IS OPTIONFOR READING MILLISECONDSTIME FROM CSV directly
-// // data.forEach((object, index) => {
-// //     console.log(index);
-// //     //converts from string to number
-// //     for (const property in object) {
-// //         let value = object[property];
-
-// //         if (typeof value === 'string') {
-// //             object[property] = parseFloat(value);
-// //         }
-// //         if (property === 'timestamp') {
-// //             value = value*1000
-// //             let date = new Date(value)
-// //             object[property] = date;
-// //     }
-// //  }
+ }
 
  //adds engine power
  const torque = object["Engine torque"];
@@ -142,8 +143,8 @@ data.forEach((object, index) => {
     // dataEveryMinute.push(i.timestamp)
     const timestampsEveryMinute = [] 
     
-    const startDate = new Date('11/17/2022 00:00:00');
-    for (let second = 0; second < 4; second++) {
+    const startDate = new Date('11/17/2022 01:00:00');
+    for (let second = 0; second < 13; second++) {
         timestampsEveryMinute.push(startDate.toLocaleString());
         
         startDate.setSeconds(startDate.getSeconds() + 60);
@@ -235,10 +236,10 @@ console.log('data', dataEveryMinute)
 
 
 
-fs.writeFileSync("Dataconverted-Second.json",JSON.stringify(data, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
+fs.writeFileSync("test2-Dataconverted-Second.json",JSON.stringify(data, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
     if(err) console.log(err)})
     
-    fs.writeFileSync("DataFiltered-Minute.json",JSON.stringify(dataEveryMinute, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
+    fs.writeFileSync("test2-DataFiltered-Minute.json",JSON.stringify(dataEveryMinute, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
         if(err) console.log(err)})
     
     
