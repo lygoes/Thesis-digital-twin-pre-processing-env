@@ -5,51 +5,52 @@ const csvtojson = require('csvtojson')
 const fs = require('fs')
 const { join, parse } = require('path')
  
-const csvfilepath = "rawdata-test2.csv"
+const csvfilepath = "Test1-CSV-data.csv"
 
 csvtojson()
 .fromFile(csvfilepath)
 .then((json) => {
     // console.log(json)
-    fs.writeFileSync("rawdataJSON-test2-string.json",JSON.stringify(json, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
+    fs.writeFileSync("Test1-JSON-data.json",JSON.stringify(json, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
         if(err) console.log(err)
     })
 })
 
 
-// let rawdata = fs.readFileSync('output2.json'); //can also just read output.json here    //another way const data = JSON.parse(fs.readFileSync("output.json"));
-// let data = JSON.parse(rawdata);
-// console.log(data[0]);
-
-let dataJSON = fs.readFileSync('rawdataJSON-test2-string.json'); //can also just read output.json here    //another way const data = JSON.parse(fs.readFileSync("output.json"));
+let dataJSON = fs.readFileSync('Test1-JSON-data.json'); //can also just read output.json here    //another way const data = JSON.parse(fs.readFileSync("output.json"));
 
 let data = JSON.parse(dataJSON);
-// console.log(pathdata)
 
-
-fs.writeFileSync("rawdataJSON-test2-parsed.json",JSON.stringify(data, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
-    if(err) console.log(err)})
 
 //defining key emission factors 
 
 const MaxEngTorque = 2905.93  
+//values in the same order as the table and in g/kWs
+let NOxEmissionsFactor = [
+    [0.0002777778,0.0002777778,0.0002777778,0.0002777778],
+    [0.0005555556,0.0005555556,0.0005555556,0.0005555556],
+    [0.0008333333,0.0008333333,0.0008333333,0.0008333333],
+    [0.0011111111,0.0011111111,0.0011111111,0.0011111111]
+] 
+
 let CO2EmissionsFactor = [
-    [0.1,0.1,0.1,0.1],
-    [0.2,0.2,0.2,0.2],
-    [0.3,0.3,0.3,0.3],
-    [0.4,0.4,0.4,0.4]
-] //values in table order and in g/kwH
+    [0.0416666667,0.0416666667,0.0416666667,0.0416666667],
+    [0.0694444444,0.0694444444,0.0694444444,0.0694444444],
+    [0.0972222222,0.0972222222,0.0972222222,0.0972222222],
+    [0.125,0.125,0.125,0.125]
+] 
 
-// CO2EmissionsFactor.forEach(collection => { //this converts factors in kwSecond - NOT WORKING THO
-//     collection.forEach(factor => {
-//         factor /= 3600 // or factor = factor / 3600
-//     });
-// });
+let PMEmissionsFactor = [
+    [0.0000027778,0.0000027778,0.0000027778,0.0000027778],
+    [0.0000055556,0.0000055556,0.0000055556,0.0000055556],
+    [0.0000083333,0.0000083333,0.0000083333,0.0000083333],
+    [0.0000111111,0.0000111111,0.0000111111,0.0000111111]
+] 
 
-console.log('emission factors', CO2EmissionsFactor[1])
+// console.log('emission factors', CO2EmissionsFactor[1])
 
 
-// //THIS IS OPTION for testing different periods of time and replacing it in the object
+// //Option for implementation 2 - creating timestamps and replacing it in the object
 // const date = new Date('11/17/2022 00:00:00');
 // const timestamps = []
 // const dateStrings = []
@@ -128,8 +129,12 @@ data.forEach((object, index) => {
     // console.log('torque', torque);
     // console.log('speed', speed);
     console.log('CO2EmissionsFactor',CO2EmissionsFactor[indexX][indexY]);
-    object.CO2EmissionFactor = CO2EmissionsFactor[indexX][indexY]
-    object.CO2Emission = object.CO2EmissionFactor * object.EnginePower
+   const CO2EmissionFactor = CO2EmissionsFactor[indexX][indexY]
+    object.CO2EmissionPerSec = CO2EmissionFactor * object.EnginePower
+    const NOxEmissionFactor = NOxEmissionsFactor[indexX][indexY]
+    object.NOxEmissionPerSec = NOxEmissionFactor * object.EnginePower
+    const PMEmissionFactor = PMEmissionsFactor[indexX][indexY]
+    object.PMEmissionPerSec = PMEmissionFactor * object.EnginePower
     
 });
 // console.log(data)
@@ -143,8 +148,8 @@ data.forEach((object, index) => {
     // dataEveryMinute.push(i.timestamp)
     const timestampsEveryMinute = [] 
     
-    const startDate = new Date('11/17/2022 01:00:00');
-    for (let second = 0; second < 13; second++) {
+    const startDate = new Date('11/17/2022 10:00:00');
+    for (let minute = 0; minute < 34; minute++) {
         timestampsEveryMinute.push(startDate.toLocaleString());
         
         startDate.setSeconds(startDate.getSeconds() + 60);
@@ -154,26 +159,39 @@ data.forEach((object, index) => {
     
     const dataEveryMinute = [] 
 
-let sumCO2Emission = 0; 
+let CO2EmissionPerMin = 0; 
+let NOxEmissionPerMin = 0; 
+let PMEmissionPerMin = 0; 
+let FuelConsumptionPerMin = 0; 
 let enginePowers = [];
 let drivingSpeeds = [];
-let drillingSpeeds = [];
 let drillRotationSpeeds = [];
 data.forEach((object, index) => {
 
     // console.log('sumCO2Emission', sumCO2Emission);
     enginePowers.push(object.EnginePower)
     drivingSpeeds.push(object['Driving speed'])
-    drillingSpeeds.push(object['Drilling speed'])
     drillRotationSpeeds.push(object['Drill rotation speed'])
-    sumCO2Emission += object.CO2Emission;
+    CO2EmissionPerMin += object.CO2EmissionPerSec;
+    PMEmissionPerMin += object.PMEmissionPerSec;
+    NOxEmissionPerMin += object.NOxEmissionPerSec;
+    FuelConsumptionPerMin += object['Fuel Consumption'];
     for (const property in object) {
         const value = object[property];
 
         if (property === 'timestamp' && timestampsEveryMinute.includes(value) ) {
-            object.sumCO2Emission = sumCO2Emission;
-            sumCO2Emission = 0; //can add another one of this with the same logic but not making value zero every min
-
+            object.CO2EmissionPerMin = CO2EmissionPerMin;
+            CO2EmissionPerMin = 0; //can add another one of this with the same logic but not making value zero every min
+            
+            object.NOxEmissionPerMin = NOxEmissionPerMin;
+            NOxEmissionPerMin = 0; 
+            
+            object.PMEmissionPerMin = PMEmissionPerMin;
+            PMEmissionPerMin = 0; 
+            
+            object.FuelConsumptionPerMin = FuelConsumptionPerMin;
+            FuelConsumptionPerMin = 0; 
+            
             const maxEnginePower = Math.max(...enginePowers); //... this spreads the elements of hte array (spread operator)
             //can also use to push one array(its elements) inside other array by firstArray.push(...secondArray)
             object.maxEnginePower = maxEnginePower;
@@ -192,21 +210,17 @@ data.forEach((object, index) => {
             drivingSpeeds = []
             
             
-            const AvgDrillingSpeeds = drillingSpeeds.reduce((a,b) => a + b, 0) / drillingSpeeds.length ; 
-            object.AvgDrillingSpeed = AvgDrillingSpeeds;
-            drillingSpeeds = []
 
             const AvgdrillRotationSpeeds = drillRotationSpeeds.reduce((a,b) => a + b, 0) / drillRotationSpeeds.length ; 
             object.AvgdrillRotationSpeed = AvgdrillRotationSpeeds;
             // object['Drill rotation speed'] = AvgdrillRotationSpeeds; if want to replace the drill rotation speed for average
-
             drillRotationSpeeds = []
 
             if (object.AvgdrillRotationSpeed !== 0) {
-                object.Status = 'Working'
+                object.Status = 'Drilling'
             } else if (object.AvgDrivingSpeed !== 0) {
-                object.Status = 'Driving'
-            } else if (object.AvgDrivingSpeed == 0) {
+                object.Status = 'Moving'
+            } else if (object.AvgDrivingSpeed == 0 && object.AvgdrillRotationSpeed == 0) {
                 object.Status = 'Idling'
             }
             
@@ -219,36 +233,27 @@ data.forEach((object, index) => {
 }) 
 dataEveryMinute.forEach(i=> {
     delete i.EnginePower
+    delete i["Engine torque"]
+    delete i["Engine speed"]
     delete i["Driving speed"]
     delete i["Drilling speed"]
     delete i["Drill rotation speed"]
     delete i.CO2EmissionFactor
-    delete i.CO2Emission
+    delete i.CO2EmissionPerSec
+    delete i.PMEmissionFactor
+    delete i.PMEmissionPerSec
+    delete i.NOxEmissionFactor
+    delete i.NOxEmissionPerSec
+    delete i["Fuel Consumption"]
 })
 
-console.log('data', dataEveryMinute)
-
-// const newFilteredArray = data.filter(i => 
-    
-//     i.timestamp === timestampsEveryMinute[1] )
 
 
 
-
-
-fs.writeFileSync("test2-Dataconverted-Second.json",JSON.stringify(data, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
+fs.writeFileSync("test1-Converted-Data-Second.json",JSON.stringify(data, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
     if(err) console.log(err)})
     
-    fs.writeFileSync("test2-DataFiltered-Minute.json",JSON.stringify(dataEveryMinute, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
+    fs.writeFileSync("test1-Preprocessed-Data-Minute.json",JSON.stringify(dataEveryMinute, null, 2),"utf-8",(err) => { //without "null, 2" in stringify it returns only one array
         if(err) console.log(err)})
     
     
-    
-    //         if (typeof i.x === 'string') {
-    //             i.x = parseFloat(i.x);
-    //         }
-
-// const result = data.find(({ Time }) => Time === '05/19/21 11:41:56')
-
-// console.log(result)
-
